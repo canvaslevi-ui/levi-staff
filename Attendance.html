@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance</title>
+
+<style>
+body{
+  font-family:sans-serif;
+  background:linear-gradient(180deg,#e0e7ff,#fff);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+
+.app{
+  width:100%;
+  max-width:460px;
+  background:white;
+  padding:25px;
+  border-radius:24px;
+  text-align:center;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+}
+
+.btn{
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  border:none;
+  border-radius:14px;
+  cursor:pointer;
+}
+
+.in{background:#22c55e;color:white;}
+.work{background:#e5e7eb;}
+.out{background:#ef4444;color:white;display:none;}
+
+.preview{
+  width:100px;
+  height:100px;
+  object-fit:cover;
+  border-radius:10px;
+  margin:5px;
+}
+
+.row{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+
+.small{
+  font-size:13px;
+  margin-top:8px;
+  line-height:1.4;
+}
+
+.toast{
+  position:fixed;
+  top:20px;
+  left:-300px;
+  background:#22c55e;
+  color:white;
+  padding:10px;
+  border-radius:10px;
+  transition:0.4s;
+}
+.toast.show{left:20px;}
+</style>
+</head>
+
+<body>
+
+<div id="toast" class="toast"></div>
+
+<div class="app">
+
+<h2>Attendance</h2>
+<div id="user"></div>
+
+<button class="btn in" onclick="checkIn()">Check In</button>
+<button class="btn work" onclick="uploadWork()">Upload Work</button>
+<button class="btn out" id="outBtn" onclick="checkout()">Checkout</button>
+
+<div class="row">
+<img id="checkinImg" class="preview" style="display:none">
+<img id="checkoutImg" class="preview" style="display:none">
+</div>
+
+<div id="workBox" class="row"></div>
+
+<div id="checkinInfo" class="small"></div>
+<div id="checkoutInfo" class="small"></div>
+
+</div>
+
+<script>
+const API="https://levi-api-zhbu.onrender.com";
+
+/* USER */
+const user = JSON.parse(sessionStorage.getItem("user"));
+if(!user){location.href="login.html";}
+document.getElementById("user").innerText="👋 "+user.name;
+
+/* STATE */
+let session = JSON.parse(localStorage.getItem("session")) || null;
+let workDone=false;
+
+/* RESTORE */
+if(session){
+  document.getElementById("checkinInfo").innerHTML =
+    "🟢 "+session.time+"<br>"+session.location;
+  document.getElementById("outBtn").style.display="block";
+}
+
+/* TOAST */
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.innerText=msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),3000);
+}
+
+/* LOCATION + ADDRESS */
+function getLocation(cb){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude;
+    const lng=pos.coords.longitude;
+
+    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+    .then(r=>r.json())
+    .then(d=>{
+      const addr = (d.address?.city || d.address?.town || "") +
+                   ", " + (d.address?.suburb || "");
+      cb(addr,lat,lng);
+    });
+
+  },()=>cb("Location denied ❌"));
+}
+
+/* CAMERA */
+function capture(callback,imgId){
+  const input=document.createElement("input");
+  input.type="file";
+  input.accept="image/*";
+  input.capture="camera";
+
+  input.onchange=e=>{
+    const file=e.target.files[0];
+    if(!file) return;
+
+    const r=new FileReader();
+    r.onload=()=>{
+      if(imgId){
+        const img=document.getElementById(imgId);
+        img.src=r.result;
+        img.style.display="block";
+      }
+      callback(r.result);
+    };
+    r.readAsDataURL(file);
+  };
+
+  input.click();
+}
+
+/* TRACKING */
+function startTracking(){
+  setInterval(()=>{
+    navigator.geolocation.getCurrentPosition(pos=>{
+      fetch(API+"/track",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          staffId:user._id,
+          lat:pos.coords.latitude,
+          lng:pos.coords.longitude
+        })
+      })
+      .then(r=>r.json())
+      .then(d=>{
+        if(d.alert){
+          alert("🚨 Work zone से बाहर हो!");
+        }
+      });
+    });
+  },30000);
+}
+
+/* CHECK IN */
+function checkIn(){
+  if(session){
+    toast("Already checked in");
+    return;
+  }
+
+  capture((img)=>{
+    const now=new Date();
+
+    getLocation((addr,lat,lng)=>{
+
+      fetch(API+"/attendance",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          staffId:user._id,
+          date:now.toISOString().split("T")[0],
+          status:"present",
+          location:addr,
+          lat, lng
+        })
+      });
+
+      document.getElementById("checkinInfo").innerHTML =
+        "🟢 "+now.toLocaleString()+"<br>📍 "+addr;
+
+      document.getElementById("outBtn").style.display="block";
+
+      session = {
+        time: now.toLocaleString(),
+        location: addr
+      };
+
+      localStorage.setItem("session", JSON.stringify(session));
+
+      startTracking();
+
+      toast("Check-in saved");
+    });
+
+  },"checkinImg");
+}
+
+/* WORK MULTIPLE */
+function uploadWork(){
+  if(!session){
+    toast("Check-in first");
+    return;
+  }
+
+  const input=document.createElement("input");
+  input.type="file";
+  input.multiple=true;
+  input.accept="image/*";
+
+  input.onchange=e=>{
+    const box=document.getElementById("workBox");
+    box.innerHTML="";
+
+    Array.from(e.target.files).forEach(f=>{
+      const r=new FileReader();
+      r.onload=()=>{
+        const img=document.createElement("img");
+        img.src=r.result;
+        img.className="preview";
+        box.appendChild(img);
+      };
+      r.readAsDataURL(f);
+    });
+
+    workDone=true;
+    toast("Work uploaded");
+  };
+
+  input.click();
+}
+
+/* CHECKOUT */
+function checkout(){
+  if(!workDone){
+    toast("Upload work first");
+    return;
+  }
+
+  capture((img)=>{
+    const now=new Date();
+
+    getLocation((addr,lat,lng)=>{
+
+      fetch(API+"/attendance",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          staffId:user._id,
+          date:now.toISOString().split("T")[0],
+          status:"checkout",
+          location:addr,
+          lat, lng
+        })
+      });
+
+      document.getElementById("checkoutInfo").innerHTML =
+        "🔴 "+now.toLocaleString()+"<br>📍 "+addr;
+
+      localStorage.removeItem("session");
+      session=null;
+
+      document.getElementById("outBtn").style.display="none";
+
+      toast("Checkout done");
+    });
+
+  },"checkoutImg");
+}
+</script>
+
+</body>
+</html>

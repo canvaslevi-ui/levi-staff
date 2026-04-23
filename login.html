@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Levi Interior — Login</title>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:linear-gradient(180deg,#e0e7ff,#fff);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+
+/* CARD */
+.card{
+  width:100%;
+  max-width:400px;
+  background:white;
+  padding:30px;
+  border-radius:20px;
+  text-align:center;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+  animation:fadeIn 0.6s ease;
+}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(30px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+/* LOGO */
+.logo{
+  width:90px;
+  margin-bottom:10px;
+  border-radius:15px;
+}
+
+/* INPUT */
+input{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:10px;
+  border:1px solid #ddd;
+}
+
+input:focus{
+  outline:none;
+  border-color:#2563eb;
+}
+
+/* BUTTON */
+button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:10px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+}
+
+button:disabled{
+  background:#9ca3af;
+  cursor:not-allowed;
+}
+
+/* OTP */
+#otpBox{
+  display:none;
+}
+
+/* MSG */
+#msg{
+  margin-top:12px;
+  font-weight:500;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+<img src="https://i.imgur.com/284Ol04.jpeg" class="logo">
+
+<h2>Levi Interior</h2>
+
+<input id="mobile" placeholder="Enter Mobile Number">
+
+<button id="sendBtn" onclick="sendOTP()">Send OTP</button>
+
+<div id="otpBox">
+<input id="otp" placeholder="Enter OTP">
+<button onclick="verifyOTP()">Verify OTP</button>
+</div>
+
+<div id="msg">⏳ Connecting server...</div>
+
+</div>
+
+<script>
+const API="https://levi-api-zhbu.onrender.com";
+
+let users=[];
+let currentUser=null;
+let generatedOTP=null;
+
+const msgEl = document.getElementById("msg");
+const btn = document.getElementById("sendBtn");
+
+/* INIT */
+btn.disabled = true;
+
+/* LOAD USERS */
+async function loadUsers(){
+  try{
+    msgEl.innerText="⏳ Connecting server...";
+
+    const res = await fetch(API+"/staff");
+    const data = await res.json();
+
+    if(!data.success){
+      throw new Error("Server issue");
+    }
+
+    users = data.data || [];
+
+    msgEl.innerText="✅ Ready";
+    btn.disabled=false;
+
+    console.log("Users:", users);
+
+  }catch(e){
+    msgEl.innerText="❌ Server error";
+    btn.disabled=false;
+  }
+}
+
+loadUsers();
+
+/* SEND OTP */
+function sendOTP(){
+  const mobileVal = document.getElementById("mobile").value.trim();
+
+  if(!mobileVal){
+    msgEl.innerText="Enter mobile number";
+    return;
+  }
+
+  if(us
