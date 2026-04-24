@@ -18,7 +18,6 @@ body{
   height:100vh;
 }
 
-/* CARD */
 .card{
   width:100%;
   max-width:420px;
@@ -29,7 +28,6 @@ body{
   text-align:center;
 }
 
-/* LOGO */
 .logo{
   width:100px;
   border-radius:20px;
@@ -37,7 +35,6 @@ body{
   padding:4px;
 }
 
-/* TITLE */
 h1{
   margin:15px 0;
   font-weight:700;
@@ -48,7 +45,6 @@ h1{
   margin-bottom:20px;
 }
 
-/* INPUT */
 input{
   width:100%;
   padding:14px;
@@ -56,9 +52,9 @@ input{
   border:1px solid #e2e8f0;
   margin-top:10px;
   font-size:15px;
+  box-sizing:border-box;
 }
 
-/* BUTTON */
 .btn{
   width:100%;
   padding:14px;
@@ -69,20 +65,21 @@ input{
   cursor:pointer;
   background:#2563eb;
   color:white;
-  transition:0.2s;
 }
 
 .btn:hover{
-  transform:scale(1.03);
+  opacity:0.9;
 }
 
-/* RESULT */
+.copyBtn{
+  background:#16a34a;
+}
+
 .result{
   margin-top:10px;
   font-size:14px;
 }
 
-/* WELCOME */
 .welcome{
   display:none;
 }
@@ -111,6 +108,7 @@ footer{
 
 <div id="otpBox" style="display:none">
 <input id="otp" placeholder="Enter OTP">
+<button class="btn copyBtn" onclick="copyOTP()">Copy OTP</button>
 <button class="btn" onclick="verifyOTP()">Verify OTP</button>
 </div>
 
@@ -132,6 +130,19 @@ const API="https://levi-api-zhbu.onrender.com";
 
 let users=[],otp,user;
 
+/* AUTO LOGIN FOR 7 DAYS */
+let savedUser = localStorage.getItem("user");
+let loginTime = localStorage.getItem("loginTime");
+
+if(savedUser && loginTime){
+ let diff = Date.now() - Number(loginTime);
+ let sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+ if(diff < sevenDays){
+   location.href="index.html";
+ }
+}
+
 /* LOAD USERS */
 fetch(API+"/staff")
 .then(r=>r.json())
@@ -139,26 +150,35 @@ fetch(API+"/staff")
 
 /* SEND OTP */
 function sendOTP(){
-let m=document.getElementById("mobile").value;
+
+let m=document.getElementById("mobile").value.trim();
 
 user=users.find(u=>u.mobile==m);
 
 if(!user){
-msg.innerText="❌ Not authorized";
-return;
+ msg.innerText="❌ Not authorized";
+ return;
 }
 
 otp=Math.floor(100000+Math.random()*900000);
 
-msg.innerHTML="OTP : <b>"+otp+"</b>";
+msg.innerHTML="OTP : <b id='otpText'>"+otp+"</b>";
 otpBox.style.display="block";
+}
+
+/* COPY OTP */
+function copyOTP(){
+navigator.clipboard.writeText(otp);
+msg.innerText="✅ OTP Copied";
 }
 
 /* VERIFY */
 function verifyOTP(){
+
 if(document.getElementById("otp").value==otp){
 
-sessionStorage.setItem("user",JSON.stringify(user));
+localStorage.setItem("user",JSON.stringify(user));
+localStorage.setItem("loginTime",Date.now());
 
 document.getElementById("form").style.display="none";
 document.getElementById("welcome").style.display="block";
@@ -166,11 +186,12 @@ document.getElementById("welcomeText").innerText="Welcome "+user.name;
 
 setTimeout(()=>{
 location.href="index.html";
-},2000);
+},1500);
 
 }else{
 msg.innerText="❌ Invalid OTP";
 }
+
 }
 </script>
 
