@@ -2,111 +2,75 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Levi Interior - Attendance</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance</title>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap');
-
-:root{
-  --primary:#2563eb;
-  --green:#22c55e;
-  --red:#ef4444;
-  --gray:#e5e7eb;
-  --text:#0f172a;
-  --muted:#64748b;
-}
-
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-}
-
 body{
-  font-family:'SF Pro Display',sans-serif;
-  background:linear-gradient(180deg,#dbeafe,#ffffff);
-  min-height:100vh;
+  font-family:sans-serif;
+  background:linear-gradient(180deg,#e0e7ff,#fff);
   display:flex;
   justify-content:center;
   align-items:center;
-  padding:15px;
+  min-height:100vh;
 }
 
 .app{
   width:100%;
-  max-width:470px;
-  background:#fff;
-  border-radius:28px;
-  padding:26px 18px;
-  box-shadow:0 12px 28px rgba(0,0,0,.08);
-}
-
-h2{
+  max-width:460px;
+  background:white;
+  padding:25px;
+  border-radius:24px;
   text-align:center;
-  color:var(--text);
-  margin-bottom:8px;
-}
-
-.user{
-  text-align:center;
-  color:var(--primary);
-  font-weight:600;
-  margin-bottom:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
 }
 
 .btn{
   width:100%;
+  padding:14px;
+  margin-top:10px;
   border:none;
-  border-radius:16px;
-  padding:15px;
+  border-radius:14px;
+  cursor:pointer;
   font-size:15px;
   font-weight:600;
-  cursor:pointer;
-  margin-top:10px;
 }
 
-.in{background:var(--green);color:#fff;}
-.work{background:var(--gray);}
-.out{background:var(--red);color:#fff;display:none;}
-
-.row{
-  display:flex;
-  flex-wrap:wrap;
-  gap:10px;
-  justify-content:center;
-  margin-top:14px;
-}
+.in{background:#22c55e;color:white;}
+.work{background:#e5e7eb;}
+.out{background:#ef4444;color:white;display:none;}
 
 .preview{
   width:100px;
   height:100px;
   object-fit:cover;
-  border-radius:12px;
-  border:1px solid #e2e8f0;
+  border-radius:10px;
+  margin:5px;
+  border:1px solid #ddd;
 }
 
-.info{
-  margin-top:12px;
+.row{
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+}
+
+.small{
   font-size:13px;
-  color:var(--muted);
-  line-height:1.5;
-  background:#f8fafc;
-  padding:10px;
-  border-radius:14px;
+  margin-top:8px;
+  line-height:1.4;
 }
 
 .toast{
   position:fixed;
   top:20px;
-  left:-400px;
-  background:#111827;
-  color:#fff;
-  padding:12px 16px;
-  border-radius:12px;
-  transition:.35s;
+  left:-300px;
+  background:#22c55e;
+  color:white;
+  padding:10px;
+  border-radius:10px;
+  transition:0.4s;
   z-index:999;
-  font-size:14px;
 }
 
 .toast.show{
@@ -117,43 +81,43 @@ h2{
 
 <body>
 
-<div class="toast" id="toast"></div>
+<div id="toast" class="toast"></div>
 
 <div class="app">
 
 <h2>Attendance</h2>
-<div class="user" id="userName"></div>
+<div id="user"></div>
 
-<button class="btn in" onclick="checkIn()">🟢 Check In</button>
-<button class="btn work" onclick="uploadWork()">📸 Upload Work</button>
-<button class="btn out" id="outBtn" onclick="checkOut()">🔴 Check Out</button>
+<button class="btn in" onclick="checkIn()">Check In</button>
+<button class="btn work" onclick="uploadWork()">Upload Work</button>
+<button class="btn out" id="outBtn" onclick="checkout()">Checkout</button>
 
 <div class="row">
-  <img id="checkinImg" class="preview" style="display:none">
-  <img id="checkoutImg" class="preview" style="display:none">
+<img id="checkinImg" class="preview" style="display:none">
+<img id="checkoutImg" class="preview" style="display:none">
 </div>
 
-<div class="row" id="workBox"></div>
+<div id="workBox" class="row"></div>
 
-<div class="info" id="checkinInfo"></div>
-<div class="info" id="checkoutInfo" style="display:none"></div>
+<div id="checkinInfo" class="small"></div>
+<div id="checkoutInfo" class="small"></div>
 
 </div>
 
 <script>
 const API = "https://levi-api-zhbu.onrender.com";
 
-/* LOGIN CHECK */
+/* USER LOGIN CHECK */
 let user = localStorage.getItem("user");
 
 if(!user){
-  location.href = "login.html";
+  location.href="login.html";
 }
 
 user = JSON.parse(user);
-document.getElementById("userName").innerText = "👋 " + user.name;
+document.getElementById("user").innerText = "👋 " + user.name;
 
-/* UNIQUE SESSION KEY */
+/* UNIQUE SESSION */
 const SESSION_KEY = "session_" + user._id;
 
 /* STATE */
@@ -161,12 +125,12 @@ let session = JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
 let workDone = false;
 let trackingStarted = false;
 
-/* RESTORE SESSION */
+/* RESTORE */
 if(session){
-  document.getElementById("outBtn").style.display = "block";
   document.getElementById("checkinInfo").innerHTML =
-    "🟢 Checked In<br>" +
-    session.time + "<br>📍 " + session.location;
+    "🟢 " + session.time + "<br>📍 " + session.location;
+
+  document.getElementById("outBtn").style.display = "block";
 
   startTracking();
 }
@@ -180,40 +144,36 @@ function toast(msg){
 }
 
 /* LOCATION */
-function getLocation(callback){
-
-  if(!navigator.geolocation){
-    callback("GPS not supported",null,null);
-    return;
-  }
+function getLocation(cb){
 
   navigator.geolocation.getCurrentPosition(
 
-    pos => {
+    pos=>{
+
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
 
       fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
       .then(r=>r.json())
-      .then(data=>{
+      .then(d=>{
 
-        let address =
-          (data.address?.road || "") + " " +
-          (data.address?.suburb || "") + " " +
-          (data.address?.city || data.address?.town || "") + " " +
-          (data.address?.state || "");
+        let addr =
+          (d.address?.road || "") + " " +
+          (d.address?.suburb || "") + " " +
+          (d.address?.city || d.address?.town || "") + " " +
+          (d.address?.state || "");
 
-        address = address.trim();
+        addr = addr.trim();
 
-        if(!address){
-          address = "Lat: " + lat.toFixed(5) + ", Lng: " + lng.toFixed(5);
+        if(!addr){
+          addr = "Lat: " + lat.toFixed(5) + ", Lng: " + lng.toFixed(5);
         }
 
-        callback(address,lat,lng);
+        cb(addr,lat,lng);
 
       })
       .catch(()=>{
-        callback(
+        cb(
           "Lat: " + lat.toFixed(5) + ", Lng: " + lng.toFixed(5),
           lat,lng
         );
@@ -221,8 +181,8 @@ function getLocation(callback){
 
     },
 
-    err => {
-      callback("Location denied ❌",null,null);
+    ()=>{
+      cb("Location denied ❌",null,null);
     },
 
     {
@@ -249,7 +209,7 @@ function capture(callback,imgId){
 
     const reader = new FileReader();
 
-    reader.onload = () => {
+    reader.onload = ()=>{
 
       if(imgId){
         const img = document.getElementById(imgId);
@@ -286,8 +246,7 @@ function startTracking(){
           lat:pos.coords.latitude,
           lng:pos.coords.longitude
         })
-      })
-      .catch(()=>{});
+      }).catch(()=>{});
 
     });
 
@@ -304,9 +263,9 @@ function checkIn(){
 
   capture((img)=>{
 
-    getLocation((address,lat,lng)=>{
+    const now = new Date();
 
-      const now = new Date();
+    getLocation((addr,lat,lng)=>{
 
       fetch(API + "/attendance",{
         method:"POST",
@@ -317,7 +276,7 @@ function checkIn(){
           staffId:user._id,
           date:now.toISOString().split("T")[0],
           status:"present",
-          location:address,
+          location:addr,
           lat,lng,
           image:img
         })
@@ -325,20 +284,19 @@ function checkIn(){
 
       session = {
         time: now.toLocaleString(),
-        location: address
+        location: addr
       };
 
       localStorage.setItem(SESSION_KEY,JSON.stringify(session));
 
       document.getElementById("checkinInfo").innerHTML =
-        "🟢 Checked In<br>" +
-        session.time + "<br>📍 " + address;
+        "🟢 " + session.time + "<br>📍 " + addr;
 
       document.getElementById("outBtn").style.display = "block";
 
       startTracking();
 
-      toast("Check In Success");
+      toast("Check-in saved");
 
     });
 
@@ -349,30 +307,31 @@ function checkIn(){
 function uploadWork(){
 
   if(!session){
-    toast("Check in first");
+    toast("Check-in first");
     return;
   }
 
   const input = document.createElement("input");
   input.type = "file";
-  input.accept = "image/*";
   input.multiple = true;
+  input.accept = "image/*";
 
   input.onchange = e => {
 
-    const files = Array.from(e.target.files);
     const box = document.getElementById("workBox");
     box.innerHTML = "";
 
-    files.forEach(file=>{
+    Array.from(e.target.files).forEach(file=>{
 
       const reader = new FileReader();
 
-      reader.onload = () => {
+      reader.onload = ()=>{
+
         const img = document.createElement("img");
         img.src = reader.result;
         img.className = "preview";
         box.appendChild(img);
+
       };
 
       reader.readAsDataURL(file);
@@ -380,17 +339,17 @@ function uploadWork(){
     });
 
     workDone = true;
-    toast("Work Uploaded");
+    toast("Work uploaded");
   };
 
   input.click();
 }
 
-/* CHECK OUT */
-function checkOut(){
+/* CHECKOUT */
+function checkout(){
 
   if(!session){
-    toast("Check in first");
+    toast("Check-in first");
     return;
   }
 
@@ -401,9 +360,9 @@ function checkOut(){
 
   capture((img)=>{
 
-    getLocation((address,lat,lng)=>{
+    const now = new Date();
 
-      const now = new Date();
+    getLocation((addr,lat,lng)=>{
 
       fetch(API + "/attendance",{
         method:"POST",
@@ -414,24 +373,23 @@ function checkOut(){
           staffId:user._id,
           date:now.toISOString().split("T")[0],
           status:"checkout",
-          location:address,
+          location:addr,
           lat,lng,
           image:img
         })
       }).catch(()=>{});
 
-      document.getElementById("checkoutInfo").style.display = "block";
       document.getElementById("checkoutInfo").innerHTML =
-        "🔴 Checked Out<br>" +
-        now.toLocaleString() + "<br>📍 " + address;
+        "🔴 " + now.toLocaleString() + "<br>📍 " + addr;
 
       localStorage.removeItem(SESSION_KEY);
+
       session = null;
       workDone = false;
 
       document.getElementById("outBtn").style.display = "none";
 
-      toast("Checkout Success");
+      toast("Checkout done");
 
     });
 
