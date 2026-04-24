@@ -2,166 +2,265 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Attendance</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Levi Interior - Attendance</title>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap');
+
+:root{
+  --primary:#2563eb;
+  --green:#22c55e;
+  --red:#ef4444;
+  --gray:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
 body{
-  font-family:sans-serif;
-  background:linear-gradient(180deg,#e0e7ff,#fff);
+  font-family:'SF Pro Display',sans-serif;
+  background:linear-gradient(180deg,#dbeafe,#ffffff);
+  min-height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
-  min-height:100vh;
+  padding:15px;
 }
 
 .app{
   width:100%;
-  max-width:460px;
-  background:white;
-  padding:25px;
-  border-radius:24px;
+  max-width:470px;
+  background:#fff;
+  border-radius:28px;
+  padding:26px 18px;
+  box-shadow:0 12px 28px rgba(0,0,0,.08);
+}
+
+h2{
   text-align:center;
-  box-shadow:0 10px 25px rgba(0,0,0,0.1);
+  color:var(--text);
+  margin-bottom:8px;
+}
+
+.user{
+  text-align:center;
+  color:var(--primary);
+  font-weight:600;
+  margin-bottom:18px;
 }
 
 .btn{
   width:100%;
-  padding:14px;
-  margin-top:10px;
   border:none;
-  border-radius:14px;
+  border-radius:16px;
+  padding:15px;
+  font-size:15px;
+  font-weight:600;
   cursor:pointer;
+  margin-top:10px;
 }
 
-.in{background:#22c55e;color:white;}
-.work{background:#e5e7eb;}
-.out{background:#ef4444;color:white;display:none;}
+.in{background:var(--green);color:#fff;}
+.work{background:var(--gray);}
+.out{background:var(--red);color:#fff;display:none;}
+
+.row{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+  margin-top:14px;
+}
 
 .preview{
   width:100px;
   height:100px;
   object-fit:cover;
-  border-radius:10px;
-  margin:5px;
+  border-radius:12px;
+  border:1px solid #e2e8f0;
 }
 
-.row{
-  display:flex;
-  justify-content:center;
-  flex-wrap:wrap;
-}
-
-.small{
+.info{
+  margin-top:12px;
   font-size:13px;
-  margin-top:8px;
-  line-height:1.4;
+  color:var(--muted);
+  line-height:1.5;
+  background:#f8fafc;
+  padding:10px;
+  border-radius:14px;
 }
 
 .toast{
   position:fixed;
   top:20px;
-  left:-300px;
-  background:#22c55e;
-  color:white;
-  padding:10px;
-  border-radius:10px;
-  transition:0.4s;
+  left:-400px;
+  background:#111827;
+  color:#fff;
+  padding:12px 16px;
+  border-radius:12px;
+  transition:.35s;
+  z-index:999;
+  font-size:14px;
 }
-.toast.show{left:20px;}
+
+.toast.show{
+  left:20px;
+}
 </style>
 </head>
 
 <body>
 
-<div id="toast" class="toast"></div>
+<div class="toast" id="toast"></div>
 
 <div class="app">
 
 <h2>Attendance</h2>
-<div id="user"></div>
+<div class="user" id="userName"></div>
 
-<button class="btn in" onclick="checkIn()">Check In</button>
-<button class="btn work" onclick="uploadWork()">Upload Work</button>
-<button class="btn out" id="outBtn" onclick="checkout()">Checkout</button>
+<button class="btn in" onclick="checkIn()">🟢 Check In</button>
+<button class="btn work" onclick="uploadWork()">📸 Upload Work</button>
+<button class="btn out" id="outBtn" onclick="checkOut()">🔴 Check Out</button>
 
 <div class="row">
-<img id="checkinImg" class="preview" style="display:none">
-<img id="checkoutImg" class="preview" style="display:none">
+  <img id="checkinImg" class="preview" style="display:none">
+  <img id="checkoutImg" class="preview" style="display:none">
 </div>
 
-<div id="workBox" class="row"></div>
+<div class="row" id="workBox"></div>
 
-<div id="checkinInfo" class="small"></div>
-<div id="checkoutInfo" class="small"></div>
+<div class="info" id="checkinInfo"></div>
+<div class="info" id="checkoutInfo" style="display:none"></div>
 
 </div>
 
 <script>
-const API="https://levi-api-zhbu.onrender.com";
+const API = "https://levi-api-zhbu.onrender.com";
 
-/* USER */
-const user = JSON.parse(localStorage.getItem("user"));
-if(!user){location.href="login.html";}
-document.getElementById("user").innerText="👋 "+user.name;
+/* LOGIN CHECK */
+let user = localStorage.getItem("user");
+
+if(!user){
+  location.href = "login.html";
+}
+
+user = JSON.parse(user);
+document.getElementById("userName").innerText = "👋 " + user.name;
+
+/* UNIQUE SESSION KEY */
+const SESSION_KEY = "session_" + user._id;
 
 /* STATE */
-let session = JSON.parse(localStorage.getItem("session")) || null;
-let workDone=false;
+let session = JSON.parse(localStorage.getItem(SESSION_KEY)) || null;
+let workDone = false;
+let trackingStarted = false;
 
-/* RESTORE */
+/* RESTORE SESSION */
 if(session){
+  document.getElementById("outBtn").style.display = "block";
   document.getElementById("checkinInfo").innerHTML =
-    "🟢 "+session.time+"<br>"+session.location;
-  document.getElementById("outBtn").style.display="block";
+    "🟢 Checked In<br>" +
+    session.time + "<br>📍 " + session.location;
+
+  startTracking();
 }
 
 /* TOAST */
 function toast(msg){
-  const t=document.getElementById("toast");
-  t.innerText=msg;
+  const t = document.getElementById("toast");
+  t.innerText = msg;
   t.classList.add("show");
   setTimeout(()=>t.classList.remove("show"),3000);
 }
 
-/* LOCATION + ADDRESS */
-function getLocation(cb){
-  navigator.geolocation.getCurrentPosition(pos=>{
-    const lat=pos.coords.latitude;
-    const lng=pos.coords.longitude;
+/* LOCATION */
+function getLocation(callback){
 
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-    .then(r=>r.json())
-    .then(d=>{
-      const addr = (d.address?.city || d.address?.town || "") +
-                   ", " + (d.address?.suburb || "");
-      cb(addr,lat,lng);
-    });
+  if(!navigator.geolocation){
+    callback("GPS not supported",null,null);
+    return;
+  }
 
-  },()=>cb("Location denied ❌"));
+  navigator.geolocation.getCurrentPosition(
+
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+      .then(r=>r.json())
+      .then(data=>{
+
+        let address =
+          (data.address?.road || "") + " " +
+          (data.address?.suburb || "") + " " +
+          (data.address?.city || data.address?.town || "") + " " +
+          (data.address?.state || "");
+
+        address = address.trim();
+
+        if(!address){
+          address = "Lat: " + lat.toFixed(5) + ", Lng: " + lng.toFixed(5);
+        }
+
+        callback(address,lat,lng);
+
+      })
+      .catch(()=>{
+        callback(
+          "Lat: " + lat.toFixed(5) + ", Lng: " + lng.toFixed(5),
+          lat,lng
+        );
+      });
+
+    },
+
+    err => {
+      callback("Location denied ❌",null,null);
+    },
+
+    {
+      enableHighAccuracy:true,
+      timeout:10000,
+      maximumAge:0
+    }
+
+  );
 }
 
 /* CAMERA */
 function capture(callback,imgId){
-  const input=document.createElement("input");
-  input.type="file";
-  input.accept="image/*";
-  input.capture="camera";
 
-  input.onchange=e=>{
-    const file=e.target.files[0];
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.capture = "environment";
+
+  input.onchange = e => {
+
+    const file = e.target.files[0];
     if(!file) return;
 
-    const r=new FileReader();
-    r.onload=()=>{
+    const reader = new FileReader();
+
+    reader.onload = () => {
+
       if(imgId){
-        const img=document.getElementById(imgId);
-        img.src=r.result;
-        img.style.display="block";
+        const img = document.getElementById(imgId);
+        img.src = reader.result;
+        img.style.display = "block";
       }
-      callback(r.result);
+
+      callback(reader.result);
     };
-    r.readAsDataURL(file);
+
+    reader.readAsDataURL(file);
   };
 
   input.click();
@@ -169,138 +268,171 @@ function capture(callback,imgId){
 
 /* TRACKING */
 function startTracking(){
+
+  if(trackingStarted) return;
+  trackingStarted = true;
+
   setInterval(()=>{
+
     navigator.geolocation.getCurrentPosition(pos=>{
-      fetch(API+"/track",{
+
+      fetch(API + "/track",{
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers:{
+          "Content-Type":"application/json"
+        },
         body:JSON.stringify({
           staffId:user._id,
           lat:pos.coords.latitude,
           lng:pos.coords.longitude
         })
       })
-      .then(r=>r.json())
-      .then(d=>{
-        if(d.alert){
-          alert("🚨 Work zone से बाहर हो!");
-        }
-      });
+      .catch(()=>{});
+
     });
+
   },30000);
 }
 
 /* CHECK IN */
 function checkIn(){
+
   if(session){
     toast("Already checked in");
     return;
   }
 
   capture((img)=>{
-    const now=new Date();
 
-    getLocation((addr,lat,lng)=>{
+    getLocation((address,lat,lng)=>{
 
-      fetch(API+"/attendance",{
+      const now = new Date();
+
+      fetch(API + "/attendance",{
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers:{
+          "Content-Type":"application/json"
+        },
         body:JSON.stringify({
           staffId:user._id,
           date:now.toISOString().split("T")[0],
           status:"present",
-          location:addr,
-          lat, lng
+          location:address,
+          lat,lng,
+          image:img
         })
-      });
-
-      document.getElementById("checkinInfo").innerHTML =
-        "🟢 "+now.toLocaleString()+"<br>📍 "+addr;
-
-      document.getElementById("outBtn").style.display="block";
+      }).catch(()=>{});
 
       session = {
         time: now.toLocaleString(),
-        location: addr
+        location: address
       };
 
-      localStorage.setItem("session", JSON.stringify(session));
+      localStorage.setItem(SESSION_KEY,JSON.stringify(session));
+
+      document.getElementById("checkinInfo").innerHTML =
+        "🟢 Checked In<br>" +
+        session.time + "<br>📍 " + address;
+
+      document.getElementById("outBtn").style.display = "block";
 
       startTracking();
 
-      toast("Check-in saved");
+      toast("Check In Success");
+
     });
 
   },"checkinImg");
 }
 
-/* WORK MULTIPLE */
+/* WORK UPLOAD */
 function uploadWork(){
+
   if(!session){
-    toast("Check-in first");
+    toast("Check in first");
     return;
   }
 
-  const input=document.createElement("input");
-  input.type="file";
-  input.multiple=true;
-  input.accept="image/*";
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.multiple = true;
 
-  input.onchange=e=>{
-    const box=document.getElementById("workBox");
-    box.innerHTML="";
+  input.onchange = e => {
 
-    Array.from(e.target.files).forEach(f=>{
-      const r=new FileReader();
-      r.onload=()=>{
-        const img=document.createElement("img");
-        img.src=r.result;
-        img.className="preview";
+    const files = Array.from(e.target.files);
+    const box = document.getElementById("workBox");
+    box.innerHTML = "";
+
+    files.forEach(file=>{
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const img = document.createElement("img");
+        img.src = reader.result;
+        img.className = "preview";
         box.appendChild(img);
       };
-      r.readAsDataURL(f);
+
+      reader.readAsDataURL(file);
+
     });
 
-    workDone=true;
-    toast("Work uploaded");
+    workDone = true;
+    toast("Work Uploaded");
   };
 
   input.click();
 }
 
-/* CHECKOUT */
-function checkout(){
+/* CHECK OUT */
+function checkOut(){
+
+  if(!session){
+    toast("Check in first");
+    return;
+  }
+
   if(!workDone){
     toast("Upload work first");
     return;
   }
 
   capture((img)=>{
-    const now=new Date();
 
-    getLocation((addr,lat,lng)=>{
+    getLocation((address,lat,lng)=>{
 
-      fetch(API+"/attendance",{
+      const now = new Date();
+
+      fetch(API + "/attendance",{
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers:{
+          "Content-Type":"application/json"
+        },
         body:JSON.stringify({
           staffId:user._id,
           date:now.toISOString().split("T")[0],
           status:"checkout",
-          location:addr,
-          lat, lng
+          location:address,
+          lat,lng,
+          image:img
         })
-      });
+      }).catch(()=>{});
 
+      document.getElementById("checkoutInfo").style.display = "block";
       document.getElementById("checkoutInfo").innerHTML =
-        "🔴 "+now.toLocaleString()+"<br>📍 "+addr;
+        "🔴 Checked Out<br>" +
+        now.toLocaleString() + "<br>📍 " + address;
 
-      localStorage.removeItem("session");
-      session=null;
+      localStorage.removeItem(SESSION_KEY);
+      session = null;
+      workDone = false;
 
-      document.getElementById("outBtn").style.display="none";
+      document.getElementById("outBtn").style.display = "none";
 
-      toast("Checkout done");
+      toast("Checkout Success");
+
     });
 
   },"checkoutImg");
