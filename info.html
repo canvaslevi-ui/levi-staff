@@ -2,50 +2,58 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Staff Panel</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Levi Staff</title>
 
 <style>
 body{
   margin:0;
   font-family:sans-serif;
-  background:linear-gradient(180deg,#e0e7ff,#fff);
-}
-.container{display:flex;height:100vh}
-
-/* SIDEBAR */
-.sidebar{
-  width:30%;
   background:#f1f5f9;
-  padding:15px;
-}
-.sidebar div{
-  padding:12px;
-  margin:6px 0;
-  background:#e5e7eb;
-  border-radius:14px;
-  cursor:pointer;
-  font-weight:600;
-}
-.sidebar div.active{
-  background:#6366f1;
-  color:#fff;
 }
 
-/* MAIN */
-.main{
-  width:70%;
-  padding:15px;
-  overflow:auto;
+/* MOBILE NAV */
+.nav{
+  display:flex;
+  background:#fff;
+  position:sticky;
+  top:0;
 }
+.nav div{
+  flex:1;
+  padding:12px;
+  text-align:center;
+  font-weight:600;
+  border-bottom:2px solid transparent;
+  cursor:pointer;
+}
+.nav div.active{
+  border-bottom:2px solid #6366f1;
+  color:#6366f1;
+}
+
+.main{
+  padding:15px;
+}
+
 .section{display:none}
 
 .card{
   background:#fff;
   padding:12px;
-  border-radius:16px;
+  border-radius:14px;
   margin:10px 0;
   box-shadow:0 4px 10px rgba(0,0,0,0.05);
+}
+
+.btn{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:10px;
+  background:#6366f1;
+  color:#fff;
+  margin-top:10px;
 }
 
 .input{
@@ -56,17 +64,6 @@ body{
   border:1px solid #ccc;
 }
 
-.btn{
-  width:100%;
-  padding:10px;
-  border:none;
-  border-radius:10px;
-  background:#6366f1;
-  color:#fff;
-  font-weight:600;
-}
-
-/* FILTER */
 .filter button{
   margin:3px;
   padding:6px 10px;
@@ -78,31 +75,34 @@ body{
   background:#6366f1;
   color:#fff;
 }
+
+/* STATUS */
+.green{color:#16a34a;font-weight:bold;}
+.red{color:#dc2626;font-weight:bold;}
+.yellow{color:#ca8a04;font-weight:bold;}
 </style>
 </head>
 
 <body>
 
-<div class="container">
-
-<div class="sidebar">
-<div onclick="show('att',this)">📋 Attendance</div>
-<div onclick="show('req',this)">📨 Requests</div>
-<div onclick="show('adv',this)">💰 Advance</div>
-<div onclick="show('salary',this)">💵 Salary</div>
+<div class="nav">
+<div onclick="show('att',this)">📋</div>
+<div onclick="show('req',this)">📨</div>
+<div onclick="show('adv',this)">💰</div>
+<div onclick="show('salary',this)">💵</div>
 </div>
 
 <div class="main">
 
 <!-- ATTENDANCE -->
 <div id="att" class="section">
-<h2>Attendance</h2>
+<h3>Attendance</h3>
 
 <div class="filter">
 <button onclick="loadAttendance('today',this)">Today</button>
-<button onclick="loadAttendance('week',this)">This Week</button>
+<button onclick="loadAttendance('week',this)">Week</button>
 <button onclick="loadAttendance('lastweek',this)">Last Week</button>
-<button onclick="loadAttendance('month',this)">This Month</button>
+<button onclick="loadAttendance('month',this)">Month</button>
 <button onclick="loadAttendance('lastmonth',this)">Last Month</button>
 </div>
 
@@ -112,10 +112,8 @@ body{
 <!-- REQUEST -->
 <div id="req" class="section">
 
-<div>
-<button onclick="showReq('pay')">Payment Request</button>
-<button onclick="showReq('leave')">Leave Request</button>
-</div>
+<button onclick="toggleReq('pay')">Payment</button>
+<button onclick="toggleReq('leave')">Leave</button>
 
 <div id="payBox">
 <input id="payAmount" class="input" placeholder="Amount">
@@ -134,17 +132,17 @@ body{
 
 <!-- ADVANCE -->
 <div id="adv" class="section">
-<h2>Advance</h2>
+<h3>Advance</h3>
 <div id="advList"></div>
 </div>
 
 <!-- SALARY -->
 <div id="salary" class="section">
-<h2>Salary</h2>
+<h3>Salary</h3>
 <div id="salaryBox"></div>
+<div id="salaryHistory"></div>
 </div>
 
-</div>
 </div>
 
 <script>
@@ -154,7 +152,7 @@ const user = JSON.parse(sessionStorage.getItem("user"));
 /* NAV */
 function show(id,el){
 document.querySelectorAll('.section').forEach(s=>s.style.display='none');
-document.querySelectorAll('.sidebar div').forEach(d=>d.classList.remove('active'));
+document.querySelectorAll('.nav div').forEach(d=>d.classList.remove('active'));
 el.classList.add('active');
 document.getElementById(id).style.display='block';
 
@@ -164,12 +162,12 @@ if(id==="salary") loadSalary();
 }
 
 /* REQUEST SWITCH */
-function showReq(type){
+function toggleReq(type){
 payBox.style.display = type==="pay" ? "block":"none";
 leaveBox.style.display = type==="leave" ? "block":"none";
 }
 
-/* ATTENDANCE */
+/* ATTENDANCE GROUP */
 function loadAttendance(type,btn){
 
 if(btn){
@@ -181,11 +179,23 @@ fetch(API+"/attendance?staffId="+user._id)
 .then(r=>r.json())
 .then(res=>{
 
-let data = res.data || [];
-let now = new Date();
+let data=res.data||[];
+let now=new Date();
+let map={};
+
+/* GROUP */
+data.forEach(a=>{
+if(!map[a.date]){
+map[a.date]={date:a.date,checkIn:null,checkOut:null,location:null};
+}
+if(a.checkIn) map[a.date].checkIn=a.checkIn;
+if(a.checkOut) map[a.date].checkOut=a.checkOut;
+if(a.location) map[a.date].location=a.location;
+});
+
 let html="";
 
-data.forEach(a=>{
+Object.values(map).forEach(a=>{
 
 let d=new Date(a.date);
 let show=false;
@@ -193,15 +203,15 @@ let show=false;
 if(type==="today") show=d.toDateString()===now.toDateString();
 
 if(type==="week"){
-let f=new Date(now);f.setDate(now.getDate()-now.getDay());
-let l=new Date(f);l.setDate(f.getDate()+6);
-show=d>=f&&d<=l;
+let s=new Date(now);s.setDate(now.getDate()-now.getDay());
+let e=new Date(s);e.setDate(s.getDate()+6);
+show=d>=s&&d<=e;
 }
 
 if(type==="lastweek"){
-let f=new Date(now);f.setDate(now.getDate()-now.getDay()-7);
-let l=new Date(f);l.setDate(f.getDate()+6);
-show=d>=f&&d<=l;
+let s=new Date(now);s.setDate(now.getDate()-now.getDay()-7);
+let e=new Date(s);e.setDate(s.getDate()+6);
+show=d>=s&&d<=e;
 }
 
 if(type==="month"){
@@ -209,23 +219,24 @@ show=d.getMonth()===now.getMonth();
 }
 
 if(type==="lastmonth"){
-let lm=new Date(now.getFullYear(),now.getMonth()-1,1);
-show=d.getMonth()===lm.getMonth();
+let prev=new Date(now);prev.setMonth(now.getMonth()-1);
+show=d.getMonth()===prev.getMonth() &&
+     d.getFullYear()===prev.getFullYear();
 }
 
 if(show){
 html+=`
 <div class="card">
 ${a.date}<br>
-🟢 In: ${a.checkIn||"-"}<br>
-🔴 Out: ${a.checkOut||"-"}<br>
+🟢 ${a.checkIn||"-"}<br>
+🔴 ${a.checkOut||"-"}<br>
 📍 ${a.location||"-"}
 </div>`;
 }
 
 });
 
-attList.innerHTML = html || "No data";
+attList.innerHTML=html||"No data";
 
 });
 }
@@ -251,6 +262,8 @@ method:"POST",
 headers:{"Content-Type":"application/json"},
 body:JSON.stringify({
 staffId:user._id,
+from:leaveFrom.value,
+to:leaveTo.value,
 reason:leaveReason.value
 })
 });
@@ -262,41 +275,72 @@ function loadAdvance(){
 fetch(API+"/payment?staffId="+user._id)
 .then(r=>r.json())
 .then(res=>{
+
 let html="";
+
 (res.data||[]).forEach(a=>{
-html+=`<div class="card">₹${a.amount} - ${a.status}</div>`;
+
+let cls="yellow";
+if(a.status==="paid") cls="green";
+if(a.status==="rejected") cls="red";
+
+html+=`
+<div class="card">
+₹${a.amount}<br>
+<span class="${cls}">${a.status}</span><br>
+${new Date(a.createdAt).toLocaleDateString("en-IN")}
+</div>`;
 });
-advList.innerHTML = html || "No advance";
+
+advList.innerHTML=html||"No advance";
+
 });
 }
 
 /* SALARY */
 function loadSalary(){
+
 fetch(API+"/staff")
 .then(r=>r.json())
 .then(res=>{
-let staff = res.find(x=>x._id===user._id);
+
+let staff=(res.data||[]).find(x=>x._id===user._id);
 
 fetch(API+"/payment?staffId="+user._id)
 .then(r=>r.json())
 .then(p=>{
 
 let total=0;
-(p.data||[]).forEach(i=> total+=i.amount);
+let history="";
+
+(p.data||[]).forEach(a=>{
+if(a.status==="paid"||a.status==="approved"){
+total+=Number(a.amount||0);
+}
+
+history+=`
+<div class="card">
+₹${a.amount} - ${a.status}<br>
+${new Date(a.createdAt).toLocaleDateString("en-IN")}
+</div>`;
+});
 
 salaryBox.innerHTML=`
 <div class="card">
-Salary: ₹${staff.salary}<br>
-Advance: ₹${total}<br>
-<b>Remaining: ₹${staff.salary-total}</b>
+💵 Salary: ₹${staff?.salary||0}<br>
+💰 Advance: ₹${total}<br>
+<hr>
+🧾 Payable: ₹${(staff?.salary||0)-total}
 </div>`;
+
+salaryHistory.innerHTML=history;
 
 });
 });
 }
 
 /* START */
-show('att',document.querySelector('.sidebar div'));
+show('att',document.querySelector('.nav div'));
 </script>
 
 </body>
