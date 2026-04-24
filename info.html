@@ -34,6 +34,7 @@ text-align:center;
 font-size:22px;
 cursor:pointer;
 border-bottom:3px solid transparent;
+cursor:pointer;
 }
 
 .topnav .active{
@@ -68,7 +69,7 @@ line-height:1.7;
 .filter{
 display:flex;
 gap:8px;
-overflow-x:auto;
+overflow:auto;
 padding-bottom:8px;
 margin-bottom:12px;
 }
@@ -86,6 +87,22 @@ white-space:nowrap;
 .filter .active{
 background:#5b5cf0;
 color:#fff;
+}
+
+.green{color:#16a34a;font-weight:700;}
+.red{color:#dc2626;font-weight:700;}
+.yellow{color:#ca8a04;font-weight:700;}
+
+.small{
+font-size:13px;
+color:#6b7280;
+margin-top:6px;
+}
+
+.empty{
+text-align:center;
+padding:25px;
+color:#6b7280;
 }
 
 input,textarea,select{
@@ -126,22 +143,6 @@ cursor:pointer;
 .reqtabs .active{
 background:#5b5cf0;
 color:#fff;
-}
-
-.green{color:#16a34a;font-weight:700;}
-.red{color:#dc2626;font-weight:700;}
-.yellow{color:#ca8a04;font-weight:700;}
-
-.small{
-font-size:13px;
-color:#6b7280;
-margin-top:6px;
-}
-
-.empty{
-text-align:center;
-padding:25px;
-color:#6b7280;
 }
 
 hr{
@@ -192,20 +193,20 @@ margin:10px 0;
 <textarea id="payReason" placeholder="Reason"></textarea>
 
 <select id="payType">
-<option value="Cash">Cash</option>
-<option value="Online">Online</option>
-<option value="UPI">UPI</option>
-<option value="Bank Transfer">Bank Transfer</option>
+<option>Cash</option>
+<option>Online</option>
+<option>UPI</option>
+<option>Bank Transfer</option>
 </select>
 
-<button class="mainbtn" onclick="sendPayment()">Submit Payment</button>
+<button class="mainbtn" onclick="sendPayment()">Submit</button>
 </div>
 
 <div id="leaveBox" style="display:none">
 <input type="date" id="leaveFrom">
 <input type="date" id="leaveTo">
 <textarea id="leaveReason" placeholder="Reason"></textarea>
-<button class="mainbtn" onclick="sendLeave()">Submit Leave</button>
+<button class="mainbtn" onclick="sendLeave()">Submit</button>
 </div>
 </div>
 
@@ -219,7 +220,6 @@ margin:10px 0;
 <div id="salary" class="section">
 <h2>Salary</h2>
 <div id="salaryBox"></div>
-<div id="salaryHistory"></div>
 </div>
 
 </div>
@@ -252,7 +252,7 @@ if(type==="pay") payBtn.classList.add("active");
 if(type==="leave") leaveBtn.classList.add("active");
 }
 
-/* ATTENDANCE */
+/* ATTENDANCE FULL FIX */
 function loadAttendance(type,btn){
 
 if(btn){
@@ -265,28 +265,103 @@ fetch(API+"/attendance?staffId="+user._id)
 .then(res=>{
 
 let data=res.data||[];
-let html="";
+let grouped={};
+let now=new Date();
 
-data.reverse().forEach(a=>{
+data.forEach(a=>{
 
-html+=`
-<div class="card">
-<b>${a.date||"-"}</b><br>
-🟢 In: ${a.checkIn||"-"}<br>
-🔴 Out: ${a.checkOut||"-"}<br>
-<div class="small">📍 ${a.location||"-"}</div>
-</div>`;
+let key=a.date;
+
+if(!grouped[key]){
+grouped[key]={
+date:key,
+checkIn:"-",
+checkOut:"-",
+location:"-"
+};
+}
+
+/* IN TIME */
+if(a.status==="present" || a.status==="checkin"){
+grouped[key].checkIn =
+a.time ||
+a.checkIn ||
+(a.createdAt ? new Date(a.createdAt).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata"}) : "-");
+}
+
+/* OUT TIME */
+if(a.status==="checkout"){
+grouped[key].checkOut =
+a.time ||
+a.checkOut ||
+(a.createdAt ? new Date(a.createdAt).toLocaleTimeString("en-IN",{timeZone:"Asia/Kolkata"}) : "-");
+}
+
+/* LOCATION */
+if(a.location){
+grouped[key].location=a.location;
+}
 
 });
 
-attList.innerHTML=html||`<div class="card empty">No data</div>`;
+let html="";
+
+Object.values(grouped)
+.sort((a,b)=>new Date(b.date)-new Date(a.date))
+.forEach(a=>{
+
+let d=new Date(a.date);
+let show=false;
+
+if(type==="today"){
+show=d.toDateString()===now.toDateString();
+}
+
+if(type==="week"){
+let s=new Date(now);
+s.setDate(now.getDate()-now.getDay());
+let e=new Date(s);
+e.setDate(s.getDate()+6);
+show=d>=s&&d<=e;
+}
+
+if(type==="lastweek"){
+let s=new Date(now);
+s.setDate(now.getDate()-now.getDay()-7);
+let e=new Date(s);
+e.setDate(s.getDate()+6);
+show=d>=s&&d<=e;
+}
+
+if(type==="month"){
+show=d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+}
+
+if(type==="lastmonth"){
+let p=new Date(now);
+p.setMonth(now.getMonth()-1);
+show=d.getMonth()===p.getMonth() && d.getFullYear()===p.getFullYear();
+}
+
+if(show){
+html+=`
+<div class="card">
+<b>${a.date}</b><br>
+🟢 In: ${a.checkIn}<br>
+🔴 Out: ${a.checkOut}<br>
+<div class="small">📍 ${a.location}</div>
+</div>`;
+}
+
+});
+
+attList.innerHTML=html || `<div class="card empty">No attendance data</div>`;
 
 });
 }
 
 /* SEND PAYMENT */
 function sendPayment(){
-
 fetch(API+"/payment",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
@@ -296,18 +371,15 @@ amount:payAmount.value,
 reason:payReason.value,
 payType:payType.value
 })
-})
-.then(()=>{
-alert("Payment request sent");
+}).then(()=>{
+alert("Payment Request Sent");
 payAmount.value="";
 payReason.value="";
-payType.value="Cash";
 });
 }
 
 /* SEND LEAVE */
 function sendLeave(){
-
 fetch(API+"/leave",{
 method:"POST",
 headers:{"Content-Type":"application/json"},
@@ -317,12 +389,8 @@ from:leaveFrom.value,
 to:leaveTo.value,
 reason:leaveReason.value
 })
-})
-.then(()=>{
-alert("Leave request sent");
-leaveFrom.value="";
-leaveTo.value="";
-leaveReason.value="";
+}).then(()=>{
+alert("Leave Request Sent");
 });
 }
 
@@ -335,8 +403,8 @@ fetch(API+"/payment?staffId="+user._id)
 
 let list=res.data||[];
 
-if(list.length===0){
-advList.innerHTML=`<div class="card empty">No advance records</div>`;
+if(!list.length){
+advList.innerHTML=`<div class="card empty">No Advance</div>`;
 return;
 }
 
@@ -349,13 +417,10 @@ if(a.status==="paid") cls="green";
 if(a.status==="rejected") cls="red";
 
 html+=`
-<div class="card" style="display:flex;gap:18px;flex-wrap:wrap;align-items:center;">
+<div class="card" style="display:flex;gap:16px;flex-wrap:wrap;">
 <span>₹${a.amount}</span>
-<span>|</span>
 <span class="${cls}">${a.status||"pending"}</span>
-<span>|</span>
 <span>${new Date(a.createdAt).toLocaleDateString("en-IN")}</span>
-<span>|</span>
 <span>${a.payType||"Cash"}</span>
 </div>`;
 });
@@ -378,26 +443,13 @@ fetch(API+"/payment?staffId="+user._id)
 .then(r=>r.json())
 .then(p=>{
 
-let payments=p.data||[];
+let paid=0,pending=0;
 
-let paid=0;
-let pending=0;
-let rejected=0;
+(p.data||[]).forEach(i=>{
+let amt=Number(i.amount||0);
 
-payments.forEach(a=>{
-
-let amt=Number(a.amount||0);
-
-if(a.status==="paid"){
-paid+=amt;
-}
-else if(a.status==="rejected"){
-rejected+=amt;
-}
-else{
-pending+=amt;
-}
-
+if(i.status==="paid") paid+=amt;
+else pending+=amt;
 });
 
 let salary=Number(staff?.salary||0);
@@ -408,14 +460,12 @@ salaryBox.innerHTML=`
 💵 Salary: ₹${salary}<br>
 🟢 Paid Advance: ₹${paid}<br>
 🟡 Pending: ₹${pending}<br>
-
 <hr>
 🧾 Payable Now: ₹${payable}
 </div>`;
 
-salaryHistory.innerHTML="";   // 👈 remove down side advance list
-
 });
+
 });
 }
 
