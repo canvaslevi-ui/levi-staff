@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Levi Interior</title>
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap');
 
-:root {
+:root{
   --primary:#2563eb;
   --accent:#06b6d4;
   --surface:#ffffff;
@@ -17,7 +17,11 @@
   --muted:#64748b;
 }
 
-*{margin:0;padding:0;box-sizing:border-box;}
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
 
 body{
   font-family:'SF Pro Display',sans-serif;
@@ -26,6 +30,7 @@ body{
   justify-content:center;
   align-items:center;
   min-height:100vh;
+  padding:15px;
 }
 
 .app-container{
@@ -33,44 +38,42 @@ body{
   max-width:460px;
   background:var(--surface);
   border-radius:32px;
-  box-shadow:0 8px 20px rgba(0,0,0,0.1);
+  box-shadow:0 8px 20px rgba(0,0,0,.10);
   border:1px solid var(--separator);
-  padding:40px 20px;
+  padding:35px 20px;
   text-align:center;
 }
 
-/* LOGO */
 .logo{
   width:120px;
   height:120px;
   border-radius:28px;
   object-fit:cover;
-  margin-top:20px;
 }
 
 h1{
   font-size:28px;
-  margin-top:20px;
+  margin-top:18px;
   font-weight:700;
 }
 
 .subtitle{
   color:var(--muted);
-  margin-bottom:20px;
+  margin-top:6px;
 }
 
-/* USER NAME */
 .user-name{
   font-weight:600;
-  margin-bottom:20px;
+  margin:18px 0;
   color:#2563eb;
+  font-size:17px;
 }
 
-/* BUTTON GRID */
 .button-grid{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:16px;
+  margin-top:10px;
 }
 
 .btn{
@@ -80,23 +83,23 @@ h1{
   padding:22px;
   font-weight:600;
   cursor:pointer;
-  transition:0.2s;
+  transition:.2s;
+  font-size:15px;
 }
 
 .btn:hover{
-  transform:scale(1.05);
+  transform:scale(1.04);
 }
 
-/* LOGOUT */
 .logout{
   margin-top:20px;
+  width:100%;
   background:#ef4444;
-  color:white;
+  color:#fff;
 }
 
-/* Footer */
 footer{
-  margin-top:30px;
+  margin-top:28px;
   color:var(--muted);
   font-size:13px;
 }
@@ -107,49 +110,59 @@ footer{
 
 <div class="app-container">
 
-  <img src="https://i.imgur.com/284Ol04.jpeg" class="logo">
+<img src="https://i.imgur.com/284Ol04.jpeg" class="logo">
 
-  <h1>Levi Interior</h1>
-  <div class="subtitle">Staff Management</div>
+<h1>Levi Interior</h1>
+<div class="subtitle">Staff Management</div>
 
-  <!-- USER -->
-  <div id="userName" class="user-name"></div>
+<div id="userName" class="user-name"></div>
 
-  <!-- BUTTONS -->
-  <div class="button-grid">
-    <button class="btn" onclick="go('attendance.html')">📋 Attendance</button>
-    <button class="btn" onclick="go('info.html')">📊 Info</button>
-    <button class="btn" onclick="go('leave.html')">📝 Leave</button>
-    <button class="btn" onclick="go('payment.html')">💰 Payment</button>
-  </div>
+<div class="button-grid">
+  <button class="btn" onclick="go('attendance.html')">📋 Attendance</button>
+  <button class="btn" onclick="go('info.html')">📊 Info</button>
+  <button class="btn" onclick="go('leave.html')">📝 Leave</button>
+  <button class="btn" onclick="go('payment.html')">💰 Payment</button>
+</div>
 
-  <!-- LOGOUT -->
-  <button class="btn logout" onclick="logout()">Logout</button>
+<button class="btn logout" onclick="logout()">Logout</button>
 
-  <footer>© Levi Interior</footer>
+<footer>© Levi Interior</footer>
 
 </div>
 
 <script>
-/* 🔐 LOGIN CHECK */
-const user = JSON.parse(sessionStorage.getItem("user"));
+/* LOGIN CHECK WITH 7 DAYS */
+let user = localStorage.getItem("user");
+let loginTime = localStorage.getItem("loginTime");
 
-if(!user){
-  window.location.href = "login.html";
+if(!user || !loginTime){
+  location.href="login.html";
 }
 
-/* SHOW NAME */
+let diff = Date.now() - Number(loginTime);
+let sevenDays = 7 * 24 * 60 * 60 * 1000;
+
+if(diff > sevenDays){
+  localStorage.removeItem("user");
+  localStorage.removeItem("loginTime");
+  location.href="login.html";
+}
+
+user = JSON.parse(user);
+
+/* SHOW USER NAME */
 document.getElementById("userName").innerText = "👋 " + user.name;
 
-/* NAV */
+/* NAVIGATION */
 function go(page){
-  window.location.href = page;
+  location.href = page;
 }
 
 /* LOGOUT */
 function logout(){
-  sessionStorage.removeItem("user");
-  window.location.href = "login.html";
+  localStorage.removeItem("user");
+  localStorage.removeItem("loginTime");
+  location.href="login.html";
 }
 </script>
 
