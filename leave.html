@@ -76,7 +76,7 @@ This feature will be available soon.
 </div>
 
 <script>
-let user = JSON.parse(localStorage.getItem("user") || "{}");
+let user = JSON.parse(sessionStorage.getItem("user") || "{}");
 document.getElementById("uname").innerText = user.name || "User";
 </script>
 
