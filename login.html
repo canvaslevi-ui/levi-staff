@@ -3,13 +3,15 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Levi Interior — Login</title>
+<title>Levi Interior — Staff Login</title>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;500;600;700&display=swap');
+
 body{
   margin:0;
-  font-family:sans-serif;
-  background:linear-gradient(180deg,#e0e7ff,#fff);
+  font-family:'SF Pro Display',sans-serif;
+  background:linear-gradient(180deg,#e0e7ff 0%,#fff 100%);
   display:flex;
   justify-content:center;
   align-items:center;
@@ -19,67 +21,76 @@ body{
 /* CARD */
 .card{
   width:100%;
-  max-width:400px;
+  max-width:420px;
   background:white;
-  padding:30px;
-  border-radius:20px;
-  text-align:center;
+  border-radius:28px;
   box-shadow:0 10px 25px rgba(0,0,0,0.1);
-  animation:fadeIn 0.6s ease;
-}
-
-@keyframes fadeIn{
-  from{opacity:0;transform:translateY(30px);}
-  to{opacity:1;transform:translateY(0);}
+  padding:30px 20px;
+  text-align:center;
 }
 
 /* LOGO */
 .logo{
-  width:90px;
-  margin-bottom:10px;
-  border-radius:15px;
+  width:100px;
+  border-radius:20px;
+  background:#2563eb;
+  padding:4px;
+}
+
+/* TITLE */
+h1{
+  margin:15px 0;
+  font-weight:700;
+}
+
+.subtitle{
+  color:#64748b;
+  margin-bottom:20px;
 }
 
 /* INPUT */
 input{
   width:100%;
-  padding:12px;
+  padding:14px;
+  border-radius:14px;
+  border:1px solid #e2e8f0;
   margin-top:10px;
-  border-radius:10px;
-  border:1px solid #ddd;
-}
-
-input:focus{
-  outline:none;
-  border-color:#2563eb;
+  font-size:15px;
 }
 
 /* BUTTON */
-button{
+.btn{
   width:100%;
-  padding:12px;
-  margin-top:10px;
+  padding:14px;
+  border-radius:16px;
   border:none;
-  border-radius:10px;
+  font-weight:600;
+  margin-top:10px;
+  cursor:pointer;
   background:#2563eb;
   color:white;
-  cursor:pointer;
+  transition:0.2s;
 }
 
-button:disabled{
-  background:#9ca3af;
-  cursor:not-allowed;
+.btn:hover{
+  transform:scale(1.03);
 }
 
-/* OTP */
-#otpBox{
+/* RESULT */
+.result{
+  margin-top:10px;
+  font-size:14px;
+}
+
+/* WELCOME */
+.welcome{
   display:none;
 }
 
-/* MSG */
-#msg{
-  margin-top:12px;
-  font-weight:500;
+footer{
+  margin-top:20px;
+  font-size:13px;
+  color:#64748b;
 }
 </style>
 </head>
@@ -89,69 +100,79 @@ button:disabled{
 <div class="card">
 
 <img src="https://i.imgur.com/284Ol04.jpeg" class="logo">
+<h1>Levi Interior</h1>
+<div class="subtitle">Staff Login Portal</div>
 
-<h2>Levi Interior</h2>
+<div id="form">
 
 <input id="mobile" placeholder="Enter Mobile Number">
 
-<button id="sendBtn" onclick="sendOTP()">Send OTP</button>
+<button class="btn" onclick="sendOTP()">Send OTP</button>
 
-<div id="otpBox">
+<div id="otpBox" style="display:none">
 <input id="otp" placeholder="Enter OTP">
-<button onclick="verifyOTP()">Verify OTP</button>
+<button class="btn" onclick="verifyOTP()">Verify OTP</button>
 </div>
 
-<div id="msg">⏳ Connecting server...</div>
+<div id="msg" class="result"></div>
+
+</div>
+
+<div id="welcome" class="welcome">
+<h2 id="welcomeText"></h2>
+<p>Redirecting...</p>
+</div>
+
+<footer>© Levi Interior</footer>
 
 </div>
 
 <script>
 const API="https://levi-api-zhbu.onrender.com";
 
-let users=[];
-let currentUser=null;
-let generatedOTP=null;
-
-const msgEl = document.getElementById("msg");
-const btn = document.getElementById("sendBtn");
-
-/* INIT */
-btn.disabled = true;
+let users=[],otp,user;
 
 /* LOAD USERS */
-async function loadUsers(){
-  try{
-    msgEl.innerText="⏳ Connecting server...";
-
-    const res = await fetch(API+"/staff");
-    const data = await res.json();
-
-    if(!data.success){
-      throw new Error("Server issue");
-    }
-
-    users = data.data || [];
-
-    msgEl.innerText="✅ Ready";
-    btn.disabled=false;
-
-    console.log("Users:", users);
-
-  }catch(e){
-    msgEl.innerText="❌ Server error";
-    btn.disabled=false;
-  }
-}
-
-loadUsers();
+fetch(API+"/staff")
+.then(r=>r.json())
+.then(d=>users=d.data);
 
 /* SEND OTP */
 function sendOTP(){
-  const mobileVal = document.getElementById("mobile").value.trim();
+let m=document.getElementById("mobile").value;
 
-  if(!mobileVal){
-    msgEl.innerText="Enter mobile number";
-    return;
-  }
+user=users.find(u=>u.mobile==m);
 
-  if(us
+if(!user){
+msg.innerText="❌ Not authorized";
+return;
+}
+
+otp=Math.floor(100000+Math.random()*900000);
+
+msg.innerHTML="OTP (demo): <b>"+otp+"</b>";
+otpBox.style.display="block";
+}
+
+/* VERIFY */
+function verifyOTP(){
+if(document.getElementById("otp").value==otp){
+
+sessionStorage.setItem("user",JSON.stringify(user));
+
+document.getElementById("form").style.display="none";
+document.getElementById("welcome").style.display="block";
+document.getElementById("welcomeText").innerText="Welcome "+user.name;
+
+setTimeout(()=>{
+location.href="index.html";
+},2000);
+
+}else{
+msg.innerText="❌ Invalid OTP";
+}
+}
+</script>
+
+</body>
+</html>
