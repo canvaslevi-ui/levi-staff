@@ -226,7 +226,7 @@ margin:10px 0;
 
 <script>
 const API="https://levi-api-zhbu.onrender.com";
-const user=JSON.parse(localStorage.getItem("user")||"{}");
+const user=JSON.parse(sessionStorage.getItem("user")||"{}");
 
 /* NAV */
 function showTab(id,el){
